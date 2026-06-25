@@ -8,6 +8,9 @@ import {
   emptyEntry,
   FLOW_LABEL,
   FLOW_ORDER,
+  LH_LABEL,
+  LH_ORDER,
+  LhResult,
   MenstruationFlow,
   MUCUS_META,
   MUCUS_ORDER,
@@ -28,6 +31,7 @@ export function DailyLogScreen({
   const [basalText, setBasalText] = useState("");
   const [mucus, setMucus] = useState<CervicalMucus>("NONE");
   const [flow, setFlow] = useState<MenstruationFlow>("NONE");
+  const [lh, setLh] = useState<LhResult>("NONE");
   const [isStart, setIsStart] = useState(false);
   const [notes, setNotes] = useState("");
   const [savedAt, setSavedAt] = useState(0);
@@ -37,6 +41,7 @@ export function DailyLogScreen({
     setBasalText(entry?.basalTemperature != null ? String(entry.basalTemperature) : "");
     setMucus(entry?.cervicalMucus ?? "NONE");
     setFlow(entry?.menstruationFlow ?? "NONE");
+    setLh(entry?.lhTest ?? "NONE");
     setIsStart(entry?.isCycleStart ?? false);
     setNotes(entry?.notes ?? "");
   }, [entry, selectedDate]);
@@ -48,6 +53,7 @@ export function DailyLogScreen({
       basalTemperature: Number.isFinite(temp) ? temp : null,
       cervicalMucus: mucus,
       menstruationFlow: flow,
+      lhTest: lh,
       isCycleStart: isStart,
       notes: notes.trim(),
     };
@@ -117,6 +123,25 @@ export function DailyLogScreen({
           >
             <span className="flex-1 text-ios-label">{FLOW_LABEL[opt]}</span>
             {flow === opt && <Checkmark />}
+          </IosListRow>
+        ))}
+      </IosGroupedSection>
+
+      <div className="h-2" />
+
+      {/* Test de ovulación (LH) */}
+      <IosGroupedSection
+        title="Test de ovulación (LH)"
+        footer="Opcional. Un positivo indica el pico de LH; la ovulación llega ~1 día después. Afina la predicción, pero la confirmación segura sigue siendo temperatura + moco."
+      >
+        {LH_ORDER.map((opt, i) => (
+          <IosListRow
+            key={opt}
+            showDivider={i < LH_ORDER.length - 1}
+            onClick={() => setLh(opt)}
+          >
+            <span className="flex-1 text-ios-label">{LH_LABEL[opt]}</span>
+            {lh === opt && <Checkmark />}
           </IosListRow>
         ))}
       </IosGroupedSection>

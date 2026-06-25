@@ -149,6 +149,42 @@ describe("Hallazgo 3 — regla menos-8 / 5 días", () => {
   });
 });
 
+describe("Opción C — test de LH (ovulación)", () => {
+  const flat = [36.4, 36.4, 36.4, 36.4, 36.4, 36.4];
+  const rise = [36.7, 36.75, 36.9];
+
+  it("estima la ovulación a partir del LH cuando no hay salto térmico", () => {
+    // Sin subida térmica (temps planas); LH positivo el día (offset) 12.
+    const a = run(cycle(flat, [36.4, 36.4, 36.4], { 12: { lhTest: "POSITIVE" } }))
+      .analyses[0];
+    expect(a.temperatureShiftDay).toBeNull();
+    expect(a.lhSurgeDate).toBe(addDays(START, 12));
+    expect(a.estimatedOvulationDate).toBe(addDays(START, 13)); // pico LH + 1
+  });
+
+  it("la temperatura tiene prioridad sobre el LH si discrepan", () => {
+    const a = run(cycle(flat, rise, { 14: { lhTest: "POSITIVE" } })).analyses[0];
+    expect(a.temperatureShiftDay).toBe(addDays(START, 8));
+    expect(a.estimatedOvulationDate).toBe(addDays(START, 6)); // salto − 2, no LH + 1
+  });
+
+  it("el LH NO confirma por sí solo la fase infértil (doble control intacto)", () => {
+    // Salto térmico + LH positivo, pero SIN moco pico → no hay confirmación.
+    const a = run(cycle(flat, rise, { 5: { lhTest: "POSITIVE" } })).analyses[0];
+    expect(a.confirmedInfertileFrom).toBeNull();
+  });
+
+  it("toma el PRIMER positivo como pico de LH", () => {
+    const a = run(
+      cycle(flat, [36.4, 36.4, 36.4], {
+        11: { lhTest: "POSITIVE" },
+        12: { lhTest: "POSITIVE" },
+      })
+    ).analyses[0];
+    expect(a.lhSurgeDate).toBe(addDays(START, 11));
+  });
+});
+
 describe("Integración — ciclo realista", () => {
   const lows = [36.4, 36.42, 36.38, 36.41, 36.39, 36.43];
   const entries = cycle(lows, [36.6, 36.62, 36.7], {

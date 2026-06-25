@@ -149,6 +149,7 @@ export function analyze(params: AnalyzeParams): FertilityResult {
       cycleLength: null,
       peakDay: null,
       temperatureShiftDay: null,
+      lhSurgeDate: null,
       firstHigherMeasurementDate: null,
       nadirDate: null,
       averageLowTemperature: null,
@@ -232,10 +233,24 @@ function analyzeCycle(
     }
   }
 
-  // Ovulación estimada: día anterior al salto térmico, o Día Pico.
-  const ovulation = tempShift ? addDays(tempShift.day, -2) : peakDay;
+  // Pico de LH = primer test positivo del ciclo. La ovulación ocurre ~1 día después.
+  const lhSurgeDate =
+    rangeInclusive(cycle.start, effectiveEnd)
+      .map((d) => entriesByDate[d])
+      .filter((e): e is DayEntry => !!e && (e.lhTest ?? "NONE") === "POSITIVE")
+      .map((e) => e.date)
+      .sort()[0] ?? null;
+  const ovulationFromLh = lhSurgeDate ? addDays(lhSurgeDate, 1) : null;
 
-  // Doble control.
+  // Ovulación estimada — precedencia: temperatura (retrospectiva, fiable) >
+  // LH (predictiva) > Día Pico del moco.
+  const ovulation = tempShift
+    ? addDays(tempShift.day, -2)
+    : ovulationFromLh ?? peakDay;
+
+  // Doble control (regla de seguridad). Se confirma SOLO con temperatura + moco.
+  // El LH NO se incluye a propósito: un positivo predice la ovulación pero no
+  // confirma que ya haya terminado, así que no debe acortar la fase fértil.
   const mucusCloseDay = peakDay ? addDays(peakDay, 3) : null;
   const tempCloseDay = tempShift ? tempShift.day : null;
   const confirmedInfertileFrom =
@@ -259,6 +274,7 @@ function analyzeCycle(
     cycleLength,
     peakDay,
     temperatureShiftDay: tempShift ? tempShift.day : null,
+    lhSurgeDate,
     firstHigherMeasurementDate: tempShift ? tempShift.firstHighDay : null,
     nadirDate: nadir,
     averageLowTemperature: tempShift ? tempShift.lowAverage : null,
@@ -393,6 +409,7 @@ function buildDailyInsights(p: BuildParams): void {
     const isPeak = analysis.peakDay === d;
     const isOvulation = analysis.estimatedOvulationDate === d;
     const isShift = analysis.temperatureShiftDay === d;
+    const isLhSurge = analysis.lhSurgeDate === d;
     const isNadir = analysis.nadirDate === d;
 
     let status: FertilityStatus;
@@ -441,6 +458,7 @@ function buildDailyInsights(p: BuildParams): void {
       isPeakDay: isPeak,
       isOvulationEstimate: isOvulation,
       isTemperatureShiftDay: isShift,
+      isLhSurge,
       isNadir,
       isUncertain: analysis.isUncertain,
       explanation,

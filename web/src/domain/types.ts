@@ -69,6 +69,18 @@ export const FLOW_LABEL: Record<MenstruationFlow, string> = {
   HEAVY: "Abundante",
 };
 
+// ───────── Test de ovulación (hormona luteinizante, LH) ─────────
+
+export type LhResult = "NONE" | "NEGATIVE" | "POSITIVE";
+
+export const LH_ORDER: LhResult[] = ["NONE", "NEGATIVE", "POSITIVE"];
+
+export const LH_LABEL: Record<LhResult, string> = {
+  NONE: "Sin test",
+  NEGATIVE: "Negativo",
+  POSITIVE: "Positivo (pico LH)",
+};
+
 // ───────── Registro diario ─────────
 
 export interface DayEntry {
@@ -76,6 +88,7 @@ export interface DayEntry {
   basalTemperature: number | null;
   cervicalMucus: CervicalMucus;
   menstruationFlow: MenstruationFlow;
+  lhTest: LhResult;
   isCycleStart: boolean;
   notes: string;
 }
@@ -86,6 +99,7 @@ export function emptyEntry(date: ISODate): DayEntry {
     basalTemperature: null,
     cervicalMucus: "NONE",
     menstruationFlow: "NONE",
+    lhTest: "NONE",
     isCycleStart: false,
     notes: "",
   };
@@ -128,6 +142,8 @@ export interface CycleAnalysis {
   cycleLength: number | null;
   peakDay: ISODate | null;
   temperatureShiftDay: ISODate | null;
+  /** Primer test de LH positivo del ciclo (pico de LH). */
+  lhSurgeDate: ISODate | null;
   /** Día de la primera medición elevada (FHM), base de la regla menos-8. */
   firstHigherMeasurementDate: ISODate | null;
   nadirDate: ISODate | null;
@@ -152,6 +168,7 @@ export interface DayInsight {
   isPeakDay: boolean;
   isOvulationEstimate: boolean;
   isTemperatureShiftDay: boolean;
+  isLhSurge: boolean;
   isNadir: boolean;
   isUncertain: boolean;
   explanation: string;

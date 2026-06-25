@@ -84,6 +84,10 @@ export function TrendsScreen({
               }
             />
             <InfoRow
+              label="Pico LH"
+              value={analysis.lhSurgeDate ? formatLong(analysis.lhSurgeDate) : "Sin test"}
+            />
+            <InfoRow
               label="Ovulación estimada"
               value={
                 analysis.estimatedOvulationDate

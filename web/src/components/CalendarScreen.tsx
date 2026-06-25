@@ -250,6 +250,7 @@ function DayCell({
       <span className="mt-0.5 flex h-1.5 gap-0.5">
         {insight?.isPeakDay && <Dot color="#FF375F" />}
         {insight?.isTemperatureShiftDay && <Dot color="#007AFF" />}
+        {insight?.isLhSurge && <Dot color="#00897B" />}
         {insight?.isOvulationEstimate && !insight.isPeakDay && <Dot color="#AF52DE" />}
       </span>
     </button>

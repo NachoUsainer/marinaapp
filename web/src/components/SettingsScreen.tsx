@@ -157,7 +157,7 @@ export function SettingsScreen({
         </IosListRow>
         <IosListRow showDivider={false}>
           <span className="flex-1 text-sm text-ios-label">Método de cálculo</span>
-          <span className="text-sm text-ios-secondary">Sensiplan + Döring</span>
+          <span className="text-sm text-ios-secondary">Sensiplan + menos-8 · LH opc.</span>
         </IosListRow>
       </IosGroupedSection>
     </div>
