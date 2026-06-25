@@ -1,0 +1,23 @@
+# ───── Android / Gradle ─────
+.gradle/
+build/
+app/build/
+.kotlin/
+local.properties
+captures/
+*.iml
+.idea/
+*.keystore
+*.jks
+
+# ───── Node / Next.js (ver también web/.gitignore) ─────
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ───── Sistema ─────
+.DS_Store
+*.log
+.vercel
