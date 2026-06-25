@@ -9,6 +9,7 @@ import {
 } from "./ios";
 import { FertilityStore } from "@/data/store";
 import {
+  activeCycle,
   DayInsight,
   FertilityStatus,
   STATUS_PALETTE,
@@ -58,6 +59,10 @@ export function CalendarScreen({
   return (
     <div className="pb-6">
       <IosLargeTitle>Calendario</IosLargeTitle>
+
+      <TodayCard store={store} />
+
+      <div className="h-2" />
 
       <IosGroupedSection>
         {/* Cabecera del mes */}
@@ -189,6 +194,95 @@ export function CalendarScreen({
       </IosGroupedSection>
     </div>
   );
+}
+
+function TodayCard({ store }: { store: FertilityStore }) {
+  const today = todayISO();
+  const insight = store.result.statusByDate[today];
+  const active = activeCycle(store.result);
+  const status = insight?.status;
+  const pal = status ? STATUS_PALETTE[status] : null;
+
+  const isPostOvulation = !!(
+    (active?.estimatedOvulationDate && today > active.estimatedOvulationDate) ||
+    (active?.confirmedInfertileFrom && today >= active.confirmedInfertileFrom)
+  );
+
+  const { title, message } = todayGuidance(status, isPostOvulation, store.nextOvulation);
+  const fg = pal?.fg ?? "#1c1c1e";
+
+  return (
+    <div
+      className="mx-4 overflow-hidden rounded-2xl border"
+      style={{ backgroundColor: pal?.bg ?? "#FFFFFF", borderColor: pal ? `${pal.fg}22` : "#E5E5EA" }}
+    >
+      <div className="p-4">
+        <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: fg, opacity: 0.75 }}>
+          Hoy{insight?.cycleDay != null ? ` · Día ${insight.cycleDay} del ciclo` : ""}
+        </div>
+        <div className="mt-1 text-2xl font-bold" style={{ color: fg }}>
+          {title}
+        </div>
+        <p className="mt-1 text-sm leading-snug" style={{ color: fg, opacity: 0.9 }}>
+          {message}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function todayGuidance(
+  status: FertilityStatus | undefined,
+  isPostOvulation: boolean,
+  nextOvulation: ISODate | null
+): { title: string; message: string } {
+  const ov = nextOvulation ? formatLong(nextOvulation) : null;
+  switch (status) {
+    case "PEAK":
+      return {
+        title: "Fertilidad máxima",
+        message:
+          "Tus mejores días para concebir: hoy y los próximos 1–2 días. Es un momento ideal para tener relaciones.",
+      };
+    case "FERTILE":
+      return {
+        title: "Fertilidad alta",
+        message: "Estás en tu ventana fértil. Buen momento para buscar embarazo.",
+      };
+    case "MENSTRUATION":
+      return {
+        title: "Menstruación",
+        message: ov
+          ? `Aún no es tu momento fértil. Tu ovulación se estima hacia el ${ov}.`
+          : "Aún no es tu momento fértil este ciclo.",
+      };
+    case "UNCERTAIN":
+      return {
+        title: "Datos insuficientes",
+        message:
+          "Registra temperatura y moco unos días para poder estimar bien tu fertilidad.",
+      };
+    case "INFERTILE":
+      return isPostOvulation
+        ? {
+            title: "Ventana fértil cerrada",
+            message: ov
+              ? `La ovulación ya ha pasado este ciclo. Tu próxima oportunidad será hacia el ${ov}.`
+              : "La ovulación ya ha pasado este ciclo.",
+          }
+        : {
+            title: "Fertilidad baja",
+            message: ov
+              ? `Tu ventana fértil aún no ha empezado. Ovulación estimada hacia el ${ov}.`
+              : "Tu ventana fértil aún no ha empezado.",
+          };
+    default:
+      return {
+        title: "Empieza a registrar",
+        message:
+          "Marca el inicio de tu ciclo el primer día de regla y añade temperatura y moco en la pestaña Registro.",
+      };
+  }
 }
 
 function SummaryRow({
