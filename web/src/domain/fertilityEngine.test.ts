@@ -212,6 +212,34 @@ describe("Integración — ciclo realista", () => {
   });
 });
 
+describe("Robustez y coherencia", () => {
+  it("ignora un ciclo implausiblemente corto al promediar", () => {
+    // Dos inicios a 15 días: ese 'ciclo' de 15 días no debe fijar la media en 15.
+    const entries: DayEntry[] = [
+      { ...emptyEntry(START), isCycleStart: true, menstruationFlow: "HEAVY" },
+      { ...emptyEntry(addDays(START, 15)), isCycleStart: true, menstruationFlow: "HEAVY" },
+    ];
+    const r = analyze({
+      cycleStarts: [START, addDays(START, 15)],
+      entries,
+      today: addDays(START, 16),
+    });
+    expect(r.averageCycleLength).toBe(28); // por defecto, no 15
+  });
+
+  it("la ovulación prevista coincide con lo que pinta el calendario", () => {
+    const r = analyze({
+      cycleStarts: [START],
+      entries: [{ ...emptyEntry(START), isCycleStart: true }],
+      today: START,
+    });
+    expect(r.predictedOvulation).not.toBeNull();
+    expect(r.predictedOvulation! >= START).toBe(true);
+    // El día previsto de ovulación está pintado como fertilidad máxima.
+    expect(r.statusByDate[r.predictedOvulation!].status).toBe("PEAK");
+  });
+});
+
 describe("Casos límite", () => {
   it("sin datos devuelve resultado vacío con valores por defecto", () => {
     const r = analyze({ cycleStarts: [], entries: [], today: START });

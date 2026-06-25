@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { analyze } from "@/domain/fertilityEngine";
 import {
-  activeCycle,
   CycleSettings,
   DayEntry,
   DEFAULT_SETTINGS,
@@ -11,7 +10,7 @@ import {
   MAX_CYCLE_LENGTH,
   MIN_CYCLE_LENGTH,
 } from "@/domain/types";
-import { addDays, ISODate, todayISO } from "@/lib/date";
+import { ISODate } from "@/lib/date";
 import { dataKeys } from "./profiles";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -121,20 +120,10 @@ export function useFertilityStore(profile: string): FertilityStore {
     return map;
   }, [entries]);
 
-  const { nextOvulation, nextPeriod } = useMemo(() => {
-    const active = activeCycle(result);
-    const today = todayISO();
-    const period = active
-      ? addDays(active.cycleStartDate, result.averageCycleLength)
-      : null;
-    let ovulation: ISODate | null = null;
-    if (active?.estimatedOvulationDate && active.estimatedOvulationDate >= today) {
-      ovulation = active.estimatedOvulationDate;
-    } else if (period) {
-      ovulation = addDays(period, -result.averageLutealLength);
-    }
-    return { nextOvulation: ovulation, nextPeriod: period };
-  }, [result]);
+  // Fuente única de verdad: el motor ya calcula la predicción coherente con el
+  // calendario, así que la tarjeta y los colores nunca pueden contradecirse.
+  const nextOvulation = result.predictedOvulation;
+  const nextPeriod = result.predictedNextPeriod;
 
   return {
     loaded,

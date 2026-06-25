@@ -56,12 +56,33 @@ export interface AnalyzeParams {
   today?: ISODate;
 }
 
+/** Rango de longitud de ciclo considerado plausible para promediar. */
+const PLAUSIBLE_MIN_CYCLE = 20;
+const PLAUSIBLE_MAX_CYCLE = 45;
+
 function average(xs: number[]): number {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
 function takeLast<T>(xs: T[], n: number): T[] {
   return n >= xs.length ? xs.slice() : xs.slice(xs.length - n);
+}
+
+/**
+ * Ovulación proyectada de un ciclo — FUENTE ÚNICA usada tanto para pintar el
+ * calendario como para la predicción de la tarjeta "Hoy". Prioriza la ovulación
+ * ya detectada (temperatura/LH/moco); si no, la estima por calendario.
+ */
+function projectedOvulationFor(
+  cycleStart: ISODate,
+  analysis: CycleAnalysis,
+  averageCycle: number,
+  averageLuteal: number
+): ISODate {
+  return (
+    analysis.estimatedOvulationDate ??
+    addDays(cycleStart, averageCycle - averageLuteal - 1)
+  );
 }
 
 export function analyze(params: AnalyzeParams): FertilityResult {
@@ -81,6 +102,8 @@ export function analyze(params: AnalyzeParams): FertilityResult {
       averageLutealLength: defaultLutealLength,
       shortestCycleLength: null,
       cyclesUsedForLuteal: 0,
+      predictedOvulation: null,
+      predictedNextPeriod: null,
     };
   }
 
@@ -89,9 +112,13 @@ export function analyze(params: AnalyzeParams): FertilityResult {
     return { start, endIfClosed: nextStart ? addDays(nextStart, -1) : null };
   });
 
+  // Solo se promedian ciclos de longitud plausible. Un "ciclo" demasiado corto
+  // (p. ej. dos inicios marcados muy seguidos) o larguísimo suele ser un error de
+  // registro y descuadraría todas las predicciones, así que se descarta del cálculo.
   const closedLengths = cycles
     .filter((c) => c.endIfClosed != null)
-    .map((c) => daysBetween(c.start, c.endIfClosed as ISODate) + 1);
+    .map((c) => daysBetween(c.start, c.endIfClosed as ISODate) + 1)
+    .filter((len) => len >= PLAUSIBLE_MIN_CYCLE && len <= PLAUSIBLE_MAX_CYCLE);
 
   const averageCycle = closedLengths.length
     ? Math.trunc(average(takeLast(closedLengths, 6)))
@@ -173,6 +200,23 @@ export function analyze(params: AnalyzeParams): FertilityResult {
     phantomStart = addDays(phantomStart, averageCycle);
   }
 
+  // ── Predicción canónica (la MISMA que pinta el calendario) ──
+  const activeAnalysis = analyses[analyses.length - 1];
+  const activeStart = cycles[cycles.length - 1].start;
+  const ovulationCandidates: ISODate[] = [
+    projectedOvulationFor(activeStart, activeAnalysis, averageCycle, averageLuteal),
+  ];
+  const periodCandidates: ISODate[] = [];
+  for (let k = 1; k <= 3; k++) {
+    const futureStart = addDays(activeStart, averageCycle * k);
+    periodCandidates.push(futureStart);
+    if (k <= 2) {
+      ovulationCandidates.push(addDays(futureStart, averageCycle - averageLuteal - 1));
+    }
+  }
+  const predictedOvulation = ovulationCandidates.find((d) => d >= today) ?? null;
+  const predictedNextPeriod = periodCandidates.find((d) => d >= today) ?? null;
+
   return {
     statusByDate,
     analyses,
@@ -180,6 +224,8 @@ export function analyze(params: AnalyzeParams): FertilityResult {
     averageLutealLength: averageLuteal,
     shortestCycleLength: shortestCycle,
     cyclesUsedForLuteal: lutealHistory.length,
+    predictedOvulation,
+    predictedNextPeriod,
   };
 }
 
@@ -395,9 +441,12 @@ function buildDailyInsights(p: BuildParams): void {
   const { cycle, analysis, entriesByDate, doringOpenDay, averageCycle, averageLuteal, output } = p;
   const end = p.projectionEnd ?? cycle.endIfClosed ?? p.today;
 
-  const projectedOvulation =
-    analysis.estimatedOvulationDate ??
-    addDays(cycle.start, averageCycle - averageLuteal - 1);
+  const projectedOvulation = projectedOvulationFor(
+    cycle.start,
+    analysis,
+    averageCycle,
+    averageLuteal
+  );
   const projectedFertileStart = addDays(projectedOvulation, -5);
 
   for (const d of rangeInclusive(cycle.start, end)) {

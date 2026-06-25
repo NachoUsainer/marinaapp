@@ -181,6 +181,13 @@ export interface FertilityResult {
   averageLutealLength: number;
   shortestCycleLength: number | null;
   cyclesUsedForLuteal: number;
+  /**
+   * Próxima ovulación prevista (>= hoy). Fuente ÚNICA de verdad: coincide
+   * exactamente con el día que el calendario pinta como ovulación/pico previsto.
+   */
+  predictedOvulation: ISODate | null;
+  /** Próxima menstruación prevista (>= hoy). */
+  predictedNextPeriod: ISODate | null;
 }
 
 export function activeCycle(result: FertilityResult): CycleAnalysis | null {
