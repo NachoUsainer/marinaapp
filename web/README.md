@@ -9,6 +9,11 @@ desde la app Android Kotlin a una webapp Next.js desplegable en Vercel.
 - **100% local**: los datos se guardan en `localStorage` del navegador (igual que el
   Room on-device del original). Sin backend, sin nube, sin telemetría.
 - **4 pantallas**: Calendario, Registro diario, Tendencias (gráficas SVG), Ajustes.
+- **Perfiles locales**: nombre de usuaria + PIN de 4 dígitos. Permite que varias
+  personas usen el mismo navegador con datos separados.
+
+> ⚠️ El PIN es un **cerrojo de conveniencia**, no seguridad real: los datos no se
+> cifran ni salen del dispositivo. Cualquiera con acceso al navegador puede leerlos.
 
 ## Desarrollo
 

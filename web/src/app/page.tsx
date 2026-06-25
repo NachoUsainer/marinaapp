@@ -1,17 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BottomNav, Tab } from "@/components/BottomNav";
 import { CalendarScreen } from "@/components/CalendarScreen";
 import { DailyLogScreen } from "@/components/DailyLogScreen";
+import { LockScreen } from "@/components/LockScreen";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { TrendsScreen } from "@/components/TrendsScreen";
 import { useFertilityStore } from "@/data/store";
+import { clearCurrent, currentProfile, setCurrent } from "@/data/profiles";
 import { activeCycle } from "@/domain/types";
 import { ISODate, todayISO } from "@/lib/date";
 
 export default function Home() {
-  const store = useFertilityStore();
+  const [ready, setReady] = useState(false);
+  const [profile, setProfile] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProfile(currentProfile());
+    setReady(true);
+  }, []);
+
+  if (!ready) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md items-center justify-center bg-ios-bg text-ios-secondary">
+        Cargando…
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <LockScreen
+        onAuth={(username) => {
+          setCurrent(username);
+          setProfile(username);
+        }}
+      />
+    );
+  }
+
+  return (
+    <AppShell
+      key={profile}
+      profile={profile}
+      onLock={() => {
+        clearCurrent();
+        setProfile(null);
+      }}
+    />
+  );
+}
+
+function AppShell({ profile, onLock }: { profile: string; onLock: () => void }) {
+  const store = useFertilityStore(profile);
   const [tab, setTab] = useState<Tab>("calendar");
   const [selectedDate, setSelectedDate] = useState<ISODate>(todayISO());
   const [month, setMonth] = useState(() => {
@@ -52,7 +94,9 @@ export default function Home() {
           analysis={activeCycle(store.result)}
         />
       )}
-      {tab === "settings" && <SettingsScreen store={store} />}
+      {tab === "settings" && (
+        <SettingsScreen store={store} profile={profile} onLock={onLock} />
+      )}
 
       <BottomNav current={tab} onSelect={setTab} />
     </main>

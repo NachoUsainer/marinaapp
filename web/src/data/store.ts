@@ -12,17 +12,15 @@ import {
   MIN_CYCLE_LENGTH,
 } from "@/domain/types";
 import { addDays, ISODate, todayISO } from "@/lib/date";
-
-const ENTRIES_KEY = "ft_entries";
-const SETTINGS_KEY = "ft_settings";
+import { dataKeys } from "./profiles";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-function loadEntries(): DayEntry[] {
+function loadEntries(key: string): DayEntry[] {
   try {
-    const raw = localStorage.getItem(ENTRIES_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as DayEntry[];
     return parsed.sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -31,9 +29,9 @@ function loadEntries(): DayEntry[] {
   }
 }
 
-function loadSettings(): CycleSettings {
+function loadSettings(key: string): CycleSettings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return DEFAULT_SETTINGS;
     return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<CycleSettings>) };
   } catch {
@@ -56,26 +54,28 @@ export interface FertilityStore {
   updateLutealLength: (days: number) => void;
 }
 
-export function useFertilityStore(): FertilityStore {
+export function useFertilityStore(profile: string): FertilityStore {
+  const keys = useMemo(() => dataKeys(profile), [profile]);
   const [loaded, setLoaded] = useState(false);
   const [entries, setEntries] = useState<DayEntry[]>([]);
   const [settings, setSettings] = useState<CycleSettings>(DEFAULT_SETTINGS);
 
-  // Carga inicial desde localStorage (solo cliente).
+  // Carga inicial desde localStorage (solo cliente), reactiva al perfil activo.
   useEffect(() => {
-    setEntries(loadEntries());
-    setSettings(loadSettings());
+    setLoaded(false);
+    setEntries(loadEntries(keys.entries));
+    setSettings(loadSettings(keys.settings));
     setLoaded(true);
-  }, []);
+  }, [keys]);
 
   // Persistencia.
   useEffect(() => {
-    if (loaded) localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
-  }, [entries, loaded]);
+    if (loaded) localStorage.setItem(keys.entries, JSON.stringify(entries));
+  }, [entries, loaded, keys]);
 
   useEffect(() => {
-    if (loaded) localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  }, [settings, loaded]);
+    if (loaded) localStorage.setItem(keys.settings, JSON.stringify(settings));
+  }, [settings, loaded, keys]);
 
   const saveEntry = useCallback((entry: DayEntry) => {
     setEntries((prev) =>

@@ -1,15 +1,82 @@
 "use client";
 
+import { useState } from "react";
 import { IosGroupedSection, IosLargeTitle, IosListRow } from "./ios";
 import { FertilityStore } from "@/data/store";
+import { changePin, isValidPin } from "@/data/profiles";
 import { MAX_CYCLE_LENGTH, MIN_CYCLE_LENGTH } from "@/domain/types";
 
-export function SettingsScreen({ store }: { store: FertilityStore }) {
+export function SettingsScreen({
+  store,
+  profile,
+  onLock,
+}: {
+  store: FertilityStore;
+  profile: string;
+  onLock: () => void;
+}) {
   const { settings } = store;
+  const [changingPin, setChangingPin] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [pinMsg, setPinMsg] = useState("");
+
+  const submitPin = async () => {
+    if (!isValidPin(newPin)) {
+      setPinMsg("El PIN debe tener 4 dígitos.");
+      return;
+    }
+    await changePin(profile, newPin);
+    setNewPin("");
+    setChangingPin(false);
+    setPinMsg("PIN actualizado ✓");
+    window.setTimeout(() => setPinMsg(""), 1500);
+  };
 
   return (
     <div className="pb-6">
       <IosLargeTitle>Ajustes</IosLargeTitle>
+
+      <IosGroupedSection title="Perfil">
+        <IosListRow>
+          <span className="flex-1 text-sm text-ios-label">Usuaria</span>
+          <span className="text-sm font-medium text-ios-secondary">{profile}</span>
+        </IosListRow>
+        {!changingPin ? (
+          <IosListRow onClick={() => { setChangingPin(true); setPinMsg(""); }}>
+            <span className="flex-1 text-sm text-ios-label">Cambiar PIN</span>
+            <span className="text-ios-tertiary">›</span>
+          </IosListRow>
+        ) : (
+          <IosListRow>
+            <input
+              type="password"
+              inputMode="numeric"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="Nuevo PIN"
+              className="mr-2 w-28 rounded-lg border border-ios-sep px-3 py-2 text-center tracking-widest outline-none focus:border-brand-rose"
+            />
+            <button onClick={submitPin} className="mr-3 text-sm font-semibold text-brand-rose">
+              Guardar
+            </button>
+            <button
+              onClick={() => { setChangingPin(false); setNewPin(""); setPinMsg(""); }}
+              className="text-sm text-ios-secondary"
+            >
+              Cancelar
+            </button>
+          </IosListRow>
+        )}
+        <IosListRow showDivider={false} onClick={onLock}>
+          <span className="flex-1 text-sm font-medium text-brand-rose">Bloquear</span>
+        </IosListRow>
+      </IosGroupedSection>
+
+      {pinMsg && (
+        <p className="px-8 pt-1 text-xs text-ios-secondary">{pinMsg}</p>
+      )}
+
+      <div className="h-2" />
 
       <IosGroupedSection
         title="Ciclo de respaldo"
