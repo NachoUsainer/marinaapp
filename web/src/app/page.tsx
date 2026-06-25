@@ -86,6 +86,7 @@ function AppShell({ profile, onLock }: { profile: string; onLock: () => void }) 
           entry={store.entriesByDate[selectedDate]}
           onSave={store.saveEntry}
           onClear={() => store.clearEntry(selectedDate)}
+          onSelectDate={setSelectedDate}
         />
       )}
       {tab === "trends" && (

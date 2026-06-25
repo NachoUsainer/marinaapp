@@ -15,19 +15,23 @@ import {
   MUCUS_META,
   MUCUS_ORDER,
 } from "@/domain/types";
-import { formatLong, ISODate } from "@/lib/date";
+import { addDays, formatLong, formatWeekdayLong, ISODate, todayISO } from "@/lib/date";
 
 export function DailyLogScreen({
   selectedDate,
   entry,
   onSave,
   onClear,
+  onSelectDate,
 }: {
   selectedDate: ISODate;
   entry: DayEntry | undefined;
   onSave: (e: DayEntry) => void;
   onClear: () => void;
+  onSelectDate: (d: ISODate) => void;
 }) {
+  const today = todayISO();
+  const isToday = selectedDate === today;
   const [basalText, setBasalText] = useState("");
   const [mucus, setMucus] = useState<CervicalMucus>("NONE");
   const [flow, setFlow] = useState<MenstruationFlow>("NONE");
@@ -65,9 +69,48 @@ export function DailyLogScreen({
   return (
     <div className="pb-6">
       <IosLargeTitle>Registro</IosLargeTitle>
-      <div className="px-4 pb-2 text-base text-ios-secondary">
-        {formatLong(selectedDate)}
+
+      {/* Selector de día: flechas + toca la fecha para saltar a cualquier día */}
+      <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-ios-card px-2 py-2">
+        <button
+          aria-label="Día anterior"
+          onClick={() => onSelectDate(addDays(selectedDate, -1))}
+          className="px-3 text-2xl leading-none text-brand-rose"
+        >
+          ‹
+        </button>
+        <label className="relative flex flex-1 cursor-pointer flex-col items-center">
+          <span className="text-base font-semibold text-ios-label">
+            {isToday ? "Hoy" : formatWeekdayLong(selectedDate)}
+          </span>
+          <span className="text-xs text-ios-secondary">{formatLong(selectedDate)}</span>
+          <input
+            type="date"
+            value={selectedDate}
+            max={today}
+            onChange={(e) => e.target.value && onSelectDate(e.target.value)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+            aria-label="Elegir fecha"
+          />
+        </label>
+        <button
+          aria-label="Día siguiente"
+          disabled={selectedDate >= today}
+          onClick={() => onSelectDate(addDays(selectedDate, 1))}
+          className="px-3 text-2xl leading-none text-brand-rose disabled:opacity-30"
+        >
+          ›
+        </button>
       </div>
+
+      {!isToday && (
+        <button
+          onClick={() => onSelectDate(today)}
+          className="mx-4 mb-2 text-sm font-medium text-brand-rose"
+        >
+          ← Volver a hoy
+        </button>
+      )}
 
       {/* Temperatura */}
       <IosGroupedSection
