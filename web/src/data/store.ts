@@ -48,6 +48,7 @@ export interface FertilityStore {
   nextPeriod: ISODate | null;
   saveEntry: (entry: DayEntry) => void;
   clearEntry: (date: ISODate) => void;
+  resetData: () => void;
   updateCycleLength: (days: number) => void;
   updatePeriodLength: (days: number) => void;
   updateLutealLength: (days: number) => void;
@@ -86,6 +87,10 @@ export function useFertilityStore(profile: string): FertilityStore {
 
   const clearEntry = useCallback((date: ISODate) => {
     setEntries((prev) => prev.filter((e) => e.date !== date));
+  }, []);
+
+  const resetData = useCallback(() => {
+    setEntries([]);
   }, []);
 
   const updateCycleLength = useCallback((days: number) => {
@@ -135,6 +140,7 @@ export function useFertilityStore(profile: string): FertilityStore {
     nextPeriod,
     saveEntry,
     clearEntry,
+    resetData,
     updateCycleLength,
     updatePeriodLength,
     updateLutealLength,

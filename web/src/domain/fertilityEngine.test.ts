@@ -227,6 +227,30 @@ describe("Robustez y coherencia", () => {
     expect(r.averageCycleLength).toBe(28); // por defecto, no 15
   });
 
+  it("no pinta días futuros con biomarcadores registrados por adelantado", () => {
+    // Hoy = START. Moco clara de huevo registrado 2 días en el futuro.
+    const entries: DayEntry[] = [
+      { ...emptyEntry(START), isCycleStart: true, menstruationFlow: "HEAVY" },
+      { ...emptyEntry(addDays(START, 2)), cervicalMucus: "EGG_WHITE" },
+    ];
+    const r = analyze({ cycleStarts: [START], entries, today: START });
+    // El día +2 (futuro) NO sale como fértil/pico por el moco adelantado.
+    expect(r.statusByDate[addDays(START, 2)].status).not.toBe("PEAK");
+    expect(r.statusByDate[addDays(START, 2)].status).not.toBe("FERTILE");
+    // Y la ovulación del ciclo activo no se fija por ese moco futuro.
+    expect(r.analyses[0].peakDay).toBeNull();
+  });
+
+  it("sí usa los biomarcadores de hoy y del pasado", () => {
+    // Moco clara de huevo HOY debe contar.
+    const entries: DayEntry[] = [
+      { ...emptyEntry(addDays(START, -4)), isCycleStart: true },
+      { ...emptyEntry(START), cervicalMucus: "EGG_WHITE" },
+    ];
+    const r = analyze({ cycleStarts: [addDays(START, -4)], entries, today: START });
+    expect(r.statusByDate[START].status).toBe("PEAK");
+  });
+
   it("la ovulación prevista coincide con lo que pinta el calendario", () => {
     const r = analyze({
       cycleStarts: [START],

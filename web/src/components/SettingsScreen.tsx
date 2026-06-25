@@ -19,6 +19,28 @@ export function SettingsScreen({
   const [changingPin, setChangingPin] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
+  const [exportMsg, setExportMsg] = useState("");
+
+  const exportData = async () => {
+    const json = JSON.stringify(store.entries, null, 2);
+    try {
+      await navigator.clipboard.writeText(json);
+      setExportMsg("Copiado ✓");
+    } catch {
+      setExportMsg("No se pudo copiar");
+    }
+    window.setTimeout(() => setExportMsg(""), 1500);
+  };
+
+  const handleReset = () => {
+    if (
+      window.confirm(
+        "¿Borrar todos los registros de este perfil? Esta acción no se puede deshacer."
+      )
+    ) {
+      store.resetData();
+    }
+  };
 
   const submitPin = async () => {
     if (!isValidPin(newPin)) {
@@ -104,6 +126,25 @@ export function SettingsScreen({
           onChange={store.updateLutealLength}
           last
         />
+      </IosGroupedSection>
+
+      <div className="h-2" />
+
+      <IosGroupedSection
+        title="Datos"
+        footer="Reiniciar borra todos los registros de este perfil (no se puede deshacer). Útil para empezar de cero si los datos se han enredado."
+      >
+        <IosListRow onClick={exportData}>
+          <span className="flex-1 text-sm text-ios-label">Exportar datos</span>
+          <span className="text-sm text-ios-secondary">
+            {exportMsg || `${store.entries.length} registros`}
+          </span>
+        </IosListRow>
+        <IosListRow showDivider={false} onClick={handleReset}>
+          <span className="flex-1 text-sm font-medium text-red-600">
+            Reiniciar datos
+          </span>
+        </IosListRow>
       </IosGroupedSection>
 
       <div className="h-2" />

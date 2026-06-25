@@ -450,7 +450,11 @@ function buildDailyInsights(p: BuildParams): void {
   const projectedFertileStart = addDays(projectedOvulation, -5);
 
   for (const d of rangeInclusive(cycle.start, end)) {
-    const entry = entriesByDate[d];
+    // Solo los días hasta hoy son observaciones reales. Los futuros son
+    // PREDICCIÓN: aunque haya datos registrados por adelantado, no se usan para
+    // pintar el día (evita que el calendario contradiga la ovulación prevista).
+    const observed = d <= p.today;
+    const entry = observed ? entriesByDate[d] : undefined;
     const cycleDay = daysBetween(cycle.start, d) + 1;
     const flow = entry?.menstruationFlow ?? "NONE";
     const isMenstruation = flow !== "NONE" && cycleDay <= 7;
