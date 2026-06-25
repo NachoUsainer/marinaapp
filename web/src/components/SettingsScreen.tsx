@@ -137,10 +137,13 @@ export function SettingsScreen({
       >
         <IosListRow showDivider={false}>
           <span className="text-sm leading-snug text-ios-label">
-            Esta aplicación es una herramienta de apoyo informativo y{" "}
-            <strong>no sustituye el consejo médico profesional</strong>. No garantiza la
-            prevención del embarazo ni debe usarse como único método anticonceptivo.
-            Consulta siempre con personal sanitario cualificado.
+            Esta aplicación calcula la fertilidad con el método{" "}
+            <strong>sintotérmico (Sensiplan)</strong>: su fiabilidad depende de medir la
+            temperatura y observar el moco correctamente cada día. Es una herramienta de
+            apoyo informativo y <strong>no sustituye el consejo médico profesional</strong>;
+            no es un anticonceptivo autorizado, no garantiza la prevención del embarazo y
+            no debe usarse como único método anticonceptivo. Consulta siempre con personal
+            sanitario cualificado.
           </span>
         </IosListRow>
       </IosGroupedSection>

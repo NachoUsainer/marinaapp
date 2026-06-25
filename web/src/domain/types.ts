@@ -128,8 +128,12 @@ export interface CycleAnalysis {
   cycleLength: number | null;
   peakDay: ISODate | null;
   temperatureShiftDay: ISODate | null;
+  /** Día de la primera medición elevada (FHM), base de la regla menos-8. */
+  firstHigherMeasurementDate: ISODate | null;
   nadirDate: ISODate | null;
   averageLowTemperature: number | null;
+  /** Línea base de Sensiplan = la MÁS ALTA de las 6 temperaturas bajas previas. */
+  coverlineTemperature: number | null;
   estimatedOvulationDate: ISODate | null;
   confirmedInfertileFrom: ISODate | null;
   lutealLength: number | null;

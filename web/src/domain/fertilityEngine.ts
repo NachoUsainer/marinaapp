@@ -38,8 +38,13 @@ interface CycleSpan {
 }
 
 interface TempShift {
+  /** Día en que se CONFIRMA el salto (3ª medición elevada, o 4ª con la excepción). */
   day: ISODate;
+  /** Día de la 1ª medición elevada (FHM). */
+  firstHighDay: ISODate;
   lowAverage: number;
+  /** Coverline = la más alta de las 6 temperaturas bajas previas. */
+  coverline: number;
 }
 
 export interface AnalyzeParams {
@@ -115,11 +120,17 @@ export function analyze(params: AnalyzeParams): FertilityResult {
     const projectionEnd = isLast
       ? addDays(cycles[idx].start, averageCycle - 1)
       : null;
+    // Inicio de fase infértil para ESTE ciclo según el histórico previo (menos-8).
+    const doringOpenDay = computeInfertileStart(
+      cycles[idx].start,
+      analyses.slice(0, idx),
+      effectiveShortest
+    );
     buildDailyInsights({
       cycle: cycles[idx],
       analysis,
       entriesByDate,
-      shortestCycle: effectiveShortest,
+      doringOpenDay,
       averageCycle,
       averageLuteal,
       projectionEnd,
@@ -138,8 +149,10 @@ export function analyze(params: AnalyzeParams): FertilityResult {
       cycleLength: null,
       peakDay: null,
       temperatureShiftDay: null,
+      firstHigherMeasurementDate: null,
       nadirDate: null,
       averageLowTemperature: null,
+      coverlineTemperature: null,
       estimatedOvulationDate: null,
       confirmedInfertileFrom: null,
       lutealLength: null,
@@ -149,7 +162,7 @@ export function analyze(params: AnalyzeParams): FertilityResult {
       cycle: phantomCycle,
       analysis: phantomAnalysis,
       entriesByDate,
-      shortestCycle: effectiveShortest,
+      doringOpenDay: computeInfertileStart(phantomStart, analyses, effectiveShortest),
       averageCycle,
       averageLuteal,
       projectionEnd: addDays(phantomStart, averageCycle - 1),
@@ -183,14 +196,24 @@ function analyzeCycle(
       ? daysBetween(cycle.start, cycle.endIfClosed) + 1
       : null;
 
-  // Día Pico = último día con moco máximo.
+  // Día Pico = último día con la MEJOR calidad de moco fértil del ciclo (Sensiplan).
+  // No exige clara de huevo: si el máximo observado es S+ (acuoso/cremoso), el Pico
+  // es el último día con ese nivel máximo. Solo cuenta si el máximo es fértil (≥ S+).
+  const cycleMucus = rangeInclusive(cycle.start, effectiveEnd)
+    .map((d) => entriesByDate[d])
+    .filter((e): e is DayEntry => !!e && mucusIsFertile(e.cervicalMucus));
+  const maxMucusScore = cycleMucus.reduce(
+    (max, e) => Math.max(max, MUCUS_META[e.cervicalMucus].score),
+    0
+  );
   const peakDay =
-    rangeInclusive(cycle.start, effectiveEnd)
-      .map((d) => entriesByDate[d])
-      .filter((e): e is DayEntry => !!e && mucusIsPeak(e.cervicalMucus))
-      .map((e) => e.date)
-      .sort()
-      .pop() ?? null;
+    cycleMucus.length > 0
+      ? cycleMucus
+          .filter((e) => MUCUS_META[e.cervicalMucus].score === maxMucusScore)
+          .map((e) => e.date)
+          .sort()
+          .pop() ?? null
+      : null;
 
   // Salto térmico.
   const tempShift = detectTemperatureShift(cycle.start, effectiveEnd, entriesByDate);
@@ -236,8 +259,10 @@ function analyzeCycle(
     cycleLength,
     peakDay,
     temperatureShiftDay: tempShift ? tempShift.day : null,
+    firstHigherMeasurementDate: tempShift ? tempShift.firstHighDay : null,
     nadirDate: nadir,
     averageLowTemperature: tempShift ? tempShift.lowAverage : null,
+    coverlineTemperature: tempShift ? tempShift.coverline : null,
     estimatedOvulationDate: ovulation,
     confirmedInfertileFrom,
     lutealLength: luteal,
@@ -246,9 +271,14 @@ function analyzeCycle(
 }
 
 /**
- * Recorre cada ventana posible. Para cada día candidato i (≥ 6º tras el inicio):
- *   - lowSix = temps de los 6 días previos.
- *   - rise = i, i+1, i+2 → cada uno ≥ media(lowSix) + 0.1; i+2 ≥ media + 0.2.
+ * Regla de temperatura de Sensiplan (3 sobre 6), con coverline y excepción.
+ *
+ * Para cada día candidato i (≥ 6º tras el inicio):
+ *   - lowSix = temps de los 6 días previos. Coverline = MÁXIMO de esas 6.
+ *   - Las 3 mediciones (i, i+1, i+2) deben estar por encima de la coverline.
+ *   - Regla normal: la 3ª debe estar ≥ coverline + 0.2 °C → confirma en i+2.
+ *   - Excepción: si la 3ª está por encima pero < +0.2 °C, se requiere una 4ª
+ *     medición por encima de la coverline → confirma en i+3.
  */
 function detectTemperatureShift(
   cycleStart: ISODate,
@@ -258,38 +288,86 @@ function detectTemperatureShift(
   const days = rangeInclusive(cycleStart, cycleEnd);
   if (days.length < 9) return null;
 
+  const tempAt = (i: number): number | null =>
+    i < days.length ? entriesByDate[days[i]]?.basalTemperature ?? null : null;
+
   for (let firstHighIdx = 6; firstHighIdx < days.length - 2; firstHighIdx++) {
     const lowSix: number[] = [];
     for (let i = firstHighIdx - 6; i < firstHighIdx; i++) {
-      const t = entriesByDate[days[i]]?.basalTemperature;
+      const t = tempAt(i);
       if (t != null) lowSix.push(t);
     }
     if (lowSix.length < 6) continue;
 
-    const highs: number[] = [];
-    for (let i = firstHighIdx; i <= firstHighIdx + 2; i++) {
-      const t = entriesByDate[days[i]]?.basalTemperature;
-      if (t != null) highs.push(t);
-    }
-    if (highs.length < 3) continue;
-
+    const coverline = Math.max(...lowSix);
     const mean = average(lowSix);
-    const allUp = highs.every((t) => t >= mean + 0.1 - 1e-9);
-    const thirdUp = highs[2] >= mean + 0.2 - 1e-9;
-    if (allUp && thirdUp) {
-      return { day: days[firstHighIdx + 2], lowAverage: mean };
+
+    const t0 = tempAt(firstHighIdx);
+    const t1 = tempAt(firstHighIdx + 1);
+    const t2 = tempAt(firstHighIdx + 2);
+    if (t0 == null || t1 == null || t2 == null) continue;
+
+    // Las dos primeras deben superar la coverline; si no, no es esta ventana.
+    if (!(t0 > coverline && t1 > coverline && t2 > coverline)) continue;
+
+    const base = { firstHighDay: days[firstHighIdx], lowAverage: mean, coverline };
+
+    // Regla normal: 3ª medición ≥ coverline + 0.2 °C.
+    if (t2 >= coverline + 0.2 - 1e-9) {
+      return { day: days[firstHighIdx + 2], ...base };
     }
+
+    // Excepción: 3ª por encima pero < +0.2 → se necesita una 4ª por encima.
+    const t3 = tempAt(firstHighIdx + 3);
+    if (t3 != null && t3 > coverline) {
+      return { day: days[firstHighIdx + 3], ...base };
+    }
+    // Si no, continúa buscando otra ventana válida.
   }
   return null;
 }
 
 // ───────── Mapeo día → DayInsight ─────────
 
+/**
+ * Primer día fértil al inicio del ciclo (fin de la fase infértil preovulatoria).
+ *
+ * Regla menos-8 de Sensiplan: con histórico de saltos térmicos confirmados,
+ *   último día infértil = (FHM más temprano observado) − 8.
+ *   - Con ≥ 12 ciclos confirmados se aplica directamente.
+ *   - Con menos, se limita a la "regla de los 5 días" (máx. día 5), y solo si
+ *     existe al menos un ciclo previo con salto confirmado.
+ * Sin histórico térmico: estimación de calendario (Döring, ciclo más corto − 20).
+ *
+ * Devuelve la FECHA del primer día fértil (los días anteriores son infértiles).
+ */
+export function computeInfertileStart(
+  cycleStart: ISODate,
+  priorAnalyses: CycleAnalysis[],
+  effectiveShortest: number
+): ISODate {
+  const fhmCycleDays = priorAnalyses
+    .filter((a) => a.firstHigherMeasurementDate != null)
+    .map((a) => daysBetween(a.cycleStartDate, a.firstHigherMeasurementDate as ISODate) + 1);
+
+  let lastInfertileDay: number;
+  if (fhmCycleDays.length >= 1) {
+    const earliestFhm = Math.min(...fhmCycleDays);
+    const minus8 = earliestFhm - 8;
+    lastInfertileDay = fhmCycleDays.length >= 12 ? minus8 : Math.min(5, minus8);
+  } else {
+    // Sin datos de temperatura: respaldo de calendario.
+    lastInfertileDay = effectiveShortest - 20;
+  }
+  lastInfertileDay = Math.max(lastInfertileDay, 0);
+  return addDays(cycleStart, lastInfertileDay);
+}
+
 interface BuildParams {
   cycle: CycleSpan;
   analysis: CycleAnalysis;
   entriesByDate: Record<ISODate, DayEntry>;
-  shortestCycle: number;
+  doringOpenDay: ISODate;
   averageCycle: number;
   averageLuteal: number;
   projectionEnd: ISODate | null;
@@ -298,9 +376,8 @@ interface BuildParams {
 }
 
 function buildDailyInsights(p: BuildParams): void {
-  const { cycle, analysis, entriesByDate, shortestCycle, averageCycle, averageLuteal, output } = p;
+  const { cycle, analysis, entriesByDate, doringOpenDay, averageCycle, averageLuteal, output } = p;
   const end = p.projectionEnd ?? cycle.endIfClosed ?? p.today;
-  const doringOpenDay = addDays(cycle.start, Math.max(shortestCycle - 20 - 1, 0));
 
   const projectedOvulation =
     analysis.estimatedOvulationDate ??
@@ -341,7 +418,7 @@ function buildDailyInsights(p: BuildParams): void {
       explanation = `Moco fértil registrado: ${MUCUS_META[entry.cervicalMucus].label}`;
     } else if (d < doringOpenDay) {
       status = "INFERTILE";
-      explanation = "Antes de la apertura de Döring (ciclo más corto −20)";
+      explanation = "Fase preovulatoria infértil (regla menos-8 / inicio de ciclo)";
     } else if (analysis.isUncertain) {
       status = "UNCERTAIN";
       explanation = "Ciclo irregular: confíe solo en biomarcadores";

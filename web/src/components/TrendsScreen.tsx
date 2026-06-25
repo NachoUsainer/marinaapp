@@ -163,7 +163,7 @@ function BasalChart({
   const nadirIdx = indexOfDate(analysis?.nadirDate ?? null);
   const shiftIdx = indexOfDate(analysis?.temperatureShiftDay ?? null);
   const peakIdx = indexOfDate(analysis?.peakDay ?? null);
-  const lowAvg = analysis?.averageLowTemperature ?? null;
+  const coverline = analysis?.coverlineTemperature ?? null;
 
   const points = entries.map((e, i) => ({
     x: i * stepX,
@@ -192,13 +192,13 @@ function BasalChart({
         />
       ))}
 
-      {/* Línea base media */}
-      {lowAvg != null && (
+      {/* Coverline (máximo de las 6 temperaturas bajas previas) */}
+      {coverline != null && (
         <line
           x1={0}
-          y1={yOf(lowAvg)}
+          y1={yOf(coverline)}
           x2={W}
-          y2={yOf(lowAvg)}
+          y2={yOf(coverline)}
           stroke={BLUE}
           strokeOpacity={0.6}
           strokeWidth={1.5}
