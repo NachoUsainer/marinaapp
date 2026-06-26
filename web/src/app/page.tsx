@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { BottomNav, Tab } from "@/components/BottomNav";
 import { CalendarScreen } from "@/components/CalendarScreen";
-import { DailyLogScreen } from "@/components/DailyLogScreen";
 import { LockScreen } from "@/components/LockScreen";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { TrendsScreen } from "@/components/TrendsScreen";
@@ -78,15 +77,6 @@ function AppShell({ profile, onLock }: { profile: string; onLock: () => void }) 
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           onShowMonth={setMonth}
-        />
-      )}
-      {tab === "log" && (
-        <DailyLogScreen
-          selectedDate={selectedDate}
-          entry={store.entriesByDate[selectedDate]}
-          onSave={store.saveEntry}
-          onClear={() => store.clearEntry(selectedDate)}
-          onSelectDate={setSelectedDate}
         />
       )}
       {tab === "trends" && (

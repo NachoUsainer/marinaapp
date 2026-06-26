@@ -1,6 +1,6 @@
 "use client";
 
-export type Tab = "calendar" | "log" | "trends" | "settings";
+export type Tab = "calendar" | "trends" | "settings";
 
 function CalendarIcon({ sw }: { sw: number }) {
   return (
@@ -8,15 +8,6 @@ function CalendarIcon({ sw }: { sw: number }) {
       <rect x="3" y="4.5" width="18" height="16.5" rx="3.5" />
       <path d="M3 9.5h18" />
       <path d="M8 2.5v3.5M16 2.5v3.5" />
-    </svg>
-  );
-}
-
-function LogIcon({ sw }: { sw: number }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-      <rect x="3" y="3" width="18" height="18" rx="5.5" />
-      <path d="M12 8.2v7.6M8.2 12h7.6" />
     </svg>
   );
 }
@@ -43,7 +34,6 @@ function SettingsIcon({ sw }: { sw: number }) {
 
 const TABS: { id: Tab; label: string; Icon: (p: { sw: number }) => JSX.Element }[] = [
   { id: "calendar", label: "Calendario", Icon: CalendarIcon },
-  { id: "log", label: "Registro", Icon: LogIcon },
   { id: "trends", label: "Tendencias", Icon: TrendsIcon },
   { id: "settings", label: "Ajustes", Icon: SettingsIcon },
 ];

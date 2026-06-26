@@ -7,6 +7,7 @@ import {
   IosListRow,
   StatusPill,
 } from "./ios";
+import { DayEditor } from "./DayEditor";
 import { FertilityStore } from "@/data/store";
 import {
   activeCycle,
@@ -123,10 +124,14 @@ export function CalendarScreen({
         </div>
       </IosGroupedSection>
 
-      <div className="h-2" />
+      <div className="px-8 pb-1 pt-1.5 text-center text-xs text-ios-secondary">
+        Toca cualquier día (← → para cambiar de mes) y regístralo abajo.
+      </div>
 
-      {/* Día seleccionado */}
-      <IosGroupedSection title="Día seleccionado">
+      <div className="h-1" />
+
+      {/* Día seleccionado — resumen + formulario para registrarlo */}
+      <IosGroupedSection title={selectedDate === today ? "Hoy" : "Día seleccionado"}>
         <IosListRow showDivider={!!insight}>
           <div className="flex-1">
             <div className="text-lg font-semibold">{formatLong(selectedDate)}</div>
@@ -144,6 +149,16 @@ export function CalendarScreen({
           </IosListRow>
         )}
       </IosGroupedSection>
+
+      <div className="px-8 pb-1 pt-3 text-xs uppercase tracking-wide text-ios-secondary">
+        Registrar este día
+      </div>
+      <DayEditor
+        selectedDate={selectedDate}
+        entry={store.entriesByDate[selectedDate]}
+        onSave={store.saveEntry}
+        onClear={() => store.clearEntry(selectedDate)}
+      />
 
       <div className="h-2" />
 

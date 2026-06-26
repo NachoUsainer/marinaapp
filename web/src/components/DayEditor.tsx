@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IosGroupedSection, IosLargeTitle, IosListRow } from "./ios";
+import { IosGroupedSection, IosListRow } from "./ios";
 import {
   CervicalMucus,
   DayEntry,
@@ -15,23 +15,20 @@ import {
   MUCUS_META,
   MUCUS_ORDER,
 } from "@/domain/types";
-import { addDays, formatLong, formatWeekdayLong, ISODate, todayISO } from "@/lib/date";
+import { ISODate } from "@/lib/date";
 
-export function DailyLogScreen({
+/** Formulario de registro de un día. El día lo elige el calendario. */
+export function DayEditor({
   selectedDate,
   entry,
   onSave,
   onClear,
-  onSelectDate,
 }: {
   selectedDate: ISODate;
   entry: DayEntry | undefined;
   onSave: (e: DayEntry) => void;
   onClear: () => void;
-  onSelectDate: (d: ISODate) => void;
 }) {
-  const today = todayISO();
-  const isToday = selectedDate === today;
   const [basalText, setBasalText] = useState("");
   const [mucus, setMucus] = useState<CervicalMucus>("NONE");
   const [flow, setFlow] = useState<MenstruationFlow>("NONE");
@@ -67,55 +64,55 @@ export function DailyLogScreen({
   };
 
   return (
-    <div className="pb-6">
-      <IosLargeTitle>Registro</IosLargeTitle>
+    <div>
+      {/* Sangrado — primero, es lo más habitual */}
+      <IosGroupedSection
+        title="Sangrado"
+        footer="Marca el inicio de ciclo abajo si es el primer día de regla."
+      >
+        {FLOW_ORDER.map((opt, i) => (
+          <IosListRow
+            key={opt}
+            showDivider={i < FLOW_ORDER.length - 1}
+            onClick={() => setFlow(opt)}
+          >
+            <span className="flex-1 text-ios-label">{FLOW_LABEL[opt]}</span>
+            {flow === opt && <Checkmark />}
+          </IosListRow>
+        ))}
+      </IosGroupedSection>
 
-      {/* Selector de día: flechas + toca la fecha para saltar a cualquier día */}
-      <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-ios-card px-2 py-2">
-        <button
-          aria-label="Día anterior"
-          onClick={() => onSelectDate(addDays(selectedDate, -1))}
-          className="px-3 text-2xl leading-none text-brand-rose"
-        >
-          ‹
-        </button>
-        <label className="relative flex flex-1 cursor-pointer flex-col items-center">
-          <span className="text-base font-semibold text-ios-label">
-            {isToday ? "Hoy" : formatWeekdayLong(selectedDate)}
-          </span>
-          <span className="text-xs text-ios-secondary">{formatLong(selectedDate)}</span>
-          <input
-            type="date"
-            value={selectedDate}
-            max={today}
-            onChange={(e) => e.target.value && onSelectDate(e.target.value)}
-            className="absolute inset-0 cursor-pointer opacity-0"
-            aria-label="Elegir fecha"
+      <div className="h-2" />
+
+      {/* Inicio de ciclo + notas */}
+      <IosGroupedSection
+        title="Detalles"
+        footer="Marca el inicio de ciclo en el primer día de sangrado real (no manchado). Es lo que define tu Día 1."
+      >
+        <IosListRow showDivider>
+          <div className="flex-1">
+            <div className="text-ios-label">Inicio de ciclo</div>
+            <div className="text-xs text-ios-secondary">Define el día 1</div>
+          </div>
+          <Toggle checked={isStart} onChange={setIsStart} />
+        </IosListRow>
+        <IosListRow showDivider={false}>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notas"
+            rows={2}
+            className="w-full resize-none rounded-lg border border-ios-sep px-3 py-2 outline-none focus:border-brand-rose"
           />
-        </label>
-        <button
-          aria-label="Día siguiente"
-          disabled={selectedDate >= today}
-          onClick={() => onSelectDate(addDays(selectedDate, 1))}
-          className="px-3 text-2xl leading-none text-brand-rose disabled:opacity-30"
-        >
-          ›
-        </button>
-      </div>
+        </IosListRow>
+      </IosGroupedSection>
 
-      {!isToday && (
-        <button
-          onClick={() => onSelectDate(today)}
-          className="mx-4 mb-2 text-sm font-medium text-brand-rose"
-        >
-          ← Volver a hoy
-        </button>
-      )}
+      <div className="h-2" />
 
       {/* Temperatura */}
       <IosGroupedSection
         title="Temperatura basal"
-        footer="Tómate la temperatura al despertar, siempre a la misma hora."
+        footer="Opcional pero recomendado. Tómala al despertar, antes de levantarte, siempre a la misma hora."
       >
         <IosListRow showDivider={false}>
           <span className="mr-3 text-ios-secondary">°C</span>
@@ -123,9 +120,7 @@ export function DailyLogScreen({
             type="text"
             inputMode="decimal"
             value={basalText}
-            onChange={(e) =>
-              setBasalText(e.target.value.replace(/[^0-9.,]/g, ""))
-            }
+            onChange={(e) => setBasalText(e.target.value.replace(/[^0-9.,]/g, ""))}
             placeholder="36.5"
             className="w-full rounded-lg border border-ios-sep px-3 py-2 outline-none focus:border-brand-rose"
           />
@@ -136,8 +131,8 @@ export function DailyLogScreen({
 
       {/* Moco */}
       <IosGroupedSection
-        title="Moco cervical (Sensiplan)"
-        footer={'El moco "clara de huevo" define el Día Pico.'}
+        title="Moco cervical (opcional)"
+        footer={'El moco "clara de huevo" indica máxima fertilidad (Día Pico).'}
       >
         {MUCUS_ORDER.map((opt, i) => (
           <IosListRow
@@ -156,26 +151,10 @@ export function DailyLogScreen({
 
       <div className="h-2" />
 
-      {/* Sangrado */}
-      <IosGroupedSection title="Sangrado">
-        {FLOW_ORDER.map((opt, i) => (
-          <IosListRow
-            key={opt}
-            showDivider={i < FLOW_ORDER.length - 1}
-            onClick={() => setFlow(opt)}
-          >
-            <span className="flex-1 text-ios-label">{FLOW_LABEL[opt]}</span>
-            {flow === opt && <Checkmark />}
-          </IosListRow>
-        ))}
-      </IosGroupedSection>
-
-      <div className="h-2" />
-
       {/* Test de ovulación (LH) */}
       <IosGroupedSection
-        title="Test de ovulación (LH)"
-        footer="Opcional. Un positivo indica el pico de LH; la ovulación llega ~1 día después. Afina la predicción, pero la confirmación segura sigue siendo temperatura + moco."
+        title="Test de ovulación (LH, opcional)"
+        footer="Un positivo indica el pico de LH; la ovulación llega ~1 día después."
       >
         {LH_ORDER.map((opt, i) => (
           <IosListRow
@@ -189,31 +168,6 @@ export function DailyLogScreen({
         ))}
       </IosGroupedSection>
 
-      <div className="h-2" />
-
-      {/* Detalles */}
-      <IosGroupedSection
-        title="Detalles"
-        footer="Marca el inicio de ciclo en el primer día de sangrado real (no manchado)."
-      >
-        <IosListRow showDivider>
-          <div className="flex-1">
-            <div className="text-ios-label">Inicio de ciclo</div>
-            <div className="text-xs text-ios-secondary">Define el día 1</div>
-          </div>
-          <Toggle checked={isStart} onChange={setIsStart} />
-        </IosListRow>
-        <IosListRow showDivider={false}>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas"
-            rows={3}
-            className="w-full resize-none rounded-lg border border-ios-sep px-3 py-2 outline-none focus:border-brand-rose"
-          />
-        </IosListRow>
-      </IosGroupedSection>
-
       <div className="h-5" />
 
       {/* Acciones */}
@@ -222,7 +176,7 @@ export function DailyLogScreen({
           onClick={save}
           className="h-12 flex-1 rounded-xl bg-brand-rose font-semibold text-white active:opacity-80"
         >
-          {savedAt ? "Guardado ✓" : "Guardar"}
+          {savedAt ? "Guardado ✓" : "Guardar día"}
         </button>
         <button
           onClick={onClear}
